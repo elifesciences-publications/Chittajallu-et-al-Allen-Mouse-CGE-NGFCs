@@ -1,0 +1,164 @@
+---
+title: "New Allen Mouse and Human_Jan 20, 2020"
+author: "Vivek Mahadevan"
+date: "January 20, 2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+    echo = FALSE,
+    message = FALSE,
+    warning = FALSE,
+    fig.align='center',
+    fig.pos='H',
+    fig.path = "plots/",
+    dev = c("svg"),
+    dpi=500
+)
+```
+
+
+#Allen MOUSE analyses
+```{r}
+library(tidyverse)
+library(mclust)
+library(stringi)
+library(umap)
+library(zoo)
+library(dplyr)
+library(Seurat)
+library(ggplot2)
+library(cowplot)
+library(DT)
+library(reticulate)
+library(knitr)
+library(rgl)
+
+data_dir <- "~/allen-brain-map/mouse/"
+list.files(data_dir) 
+allen.mouse <- Read10X((data.dir = data_dir), gene.column=1)
+allen.mouse.seurat.object = CreateSeuratObject(counts = allen.mouse, min.cells = 3, min.features = 200, project = "10X_allen.mouse")
+allen.mouse.seurat.object
+
+allen.mouse.seurat.object[["percent.mt"]] <- PercentageFeatureSet(allen.mouse.seurat.object, pattern = "^MT-")
+VlnPlot(allen.mouse.seurat.object, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+plot1 <- FeatureScatter(allen.mouse.seurat.object, feature1 = "nCount_RNA", feature2 = "percent.mt")
+plot2 <- FeatureScatter(allen.mouse.seurat.object, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
+CombinePlots(plots = list(plot1, plot2))
+allen.mouse.seurat.object <- subset(allen.mouse.seurat.object, subset = nFeature_RNA > 200 & nFeature_RNA < 20000 & percent.mt < 5)
+
+
+allen.mouse.seurat.object <- NormalizeData(allen.mouse.seurat.object, normalization.method = "LogNormalize", scale.factor = 10000)
+allen.mouse.seurat.object <- NormalizeData(allen.mouse.seurat.object)
+
+
+allen.mouse.seurat.object <- FindVariableFeatures(allen.mouse.seurat.object, selection.method = "vst", nfeatures = 2000)
+top10 <- head(VariableFeatures(allen.mouse.seurat.object), 10)
+plot1 <- VariableFeaturePlot(allen.mouse.seurat.object)
+plot2 <- LabelPoints(plot = plot1, points = top10, repel = TRUE)
+CombinePlots(plots = list(plot1, plot2))
+
+all.genes <- rownames(allen.mouse.seurat.object)
+allen.mouse.seurat.object <- ScaleData(allen.mouse.seurat.object, features = all.genes)
+
+allen.mouse.seurat.object <- RunPCA(allen.mouse.seurat.object, features = VariableFeatures(object = allen.mouse.seurat.object))
+print(allen.mouse.seurat.object[["pca"]], dims = 1:5, nfeatures = 5)
+VizDimLoadings(allen.mouse.seurat.object, dims = 1:2, reduction = "pca")
+DimPlot(allen.mouse.seurat.object, reduction = "pca")
+DimHeatmap(allen.mouse.seurat.object, dims = 1, cells = 500, balanced = TRUE)
+DimHeatmap(allen.mouse.seurat.object, dims = 1:15, cells = 500, balanced = TRUE)
+
+
+allen.mouse.seurat.object <- JackStraw(allen.mouse.seurat.object, num.replicate = 100)
+allen.mouse.seurat.object <- ScoreJackStraw(allen.mouse.seurat.object, dims = 1:20)
+JackStrawPlot(allen.mouse.seurat.object, dims = 1:20)
+ElbowPlot(object = allen.mouse.seurat.object, ndims = 40, reduction = "pca")
+
+
+allen.mouse.seurat.object <- FindNeighbors(allen.mouse.seurat.object, dims = 1:40)
+allen.mouse.seurat.object <- FindClusters(allen.mouse.seurat.object, resolution = 0.6)
+head(Idents(allen.mouse.seurat.object), 5)
+
+```
+#allen.mouse.seurat.object
+#BuildClusterTree
+```{r cluster tree, cache=TRUE}
+
+
+allen.mouse.seurat.object.cluster = BuildClusterTree (object = allen.mouse.seurat.object, reorder = TRUE, reorder.numeric = TRUE)
+PlotClusterTree(allen.mouse.seurat.object.cluster)
+```
+
+#Non-linear dimensional reduction (using UMAP)
+#The following plots show the UMAP dimensional reduction with each cluster colored and labeled.
+```{r tSNE1, results='asis', fig.height = 5, fig.width = 10, cache=TRUE}
+
+allen.mouse.seurat.object <- RunUMAP(object = allen.mouse.seurat.object, dims = 1:40)
+DimPlot(object = allen.mouse.seurat.object, reduction = 'umap', label=TRUE)
+DimPlot(object = allen.mouse.seurat.object, reduction = 'umap', label=FALSE)
+
+
+allen.mouse.seurat.object.cluster <- RunUMAP(object = allen.mouse.seurat.object.cluster, dims = 1:40)
+DimPlot(object = allen.mouse.seurat.object.cluster, reduction = 'umap', label=TRUE)
+DimPlot(object = allen.mouse.seurat.object.cluster, reduction = 'umap', label=FALSE)
+
+```
+#Non-linear dimensional reduction (using UMAP) without labels
+#The following plots show the UMAP dimensional reduction with each cluster colored and labeled.
+```{r tSNE1, results='asis', fig.height = 5, fig.width = 10, cache=TRUE}
+
+DimPlot(object = allen.mouse.seurat.object.cluster, reduction = 'umap', label=FALSE)
+
+DimPlot(object = rename.allen.mouse.clusters, reduction = 'umap', label=FALSE)
+
+DimPlot(object = allen.mouse.seurat.object.cluster, reduction = 'umap', repel=TRUE, label=TRUE)
+
+DimPlot(object = rename.allen.mouse.clusters, reduction = 'umap', repel=TRUE, label=TRUE)
+
+
+```
+#Non-linear dimensional reduction (using UMAP) without labels; AFTER RENAMING CLUSTERS
+#The following plots show the UMAP dimensional reduction with each cluster colored and labeled.
+```{r tSNE1, fig.height=5, fig.width=8, cache=TRUE, paged.print=TRUE, results='asis'}
+
+dir.create('allen.mouse.figures', showWarnings=FALSE)
+
+DimPlot(object = rename1.allen.mouse.clusters, reduction = 'umap', label=FALSE)
+
+DimPlot(object = rename1.allen.mouse.clusters, reduction = 'umap', repel=TRUE, label=TRUE)
+
+DimPlot(object = rename2.allen.mouse.clusters, reduction = 'umap', label=FALSE)
+
+DimPlot(object = rename2.allen.mouse.clusters, reduction = 'umap', repel=TRUE, label=TRUE)
+
+```
+
+
+#Number of cells per cluster actoss datasets
+```{r cluster cell number, cache=TRUE}
+
+table(Idents(allen.mouse.seurat.object.cluster))
+
+```
+
+#Save RDS file
+```{r save_rds, cache=TRUE}
+dir.create('output', showWarnings=FALSE)
+saveRDS(allen.mouse.seurat.object.cluster, file = "output/allen.mouse.seurat.object.cluster.rds")
+```
+#Findallmarkers, mouse allen, DoHeatmap
+```{r}
+allen.mouse.all.markers <- FindAllMarkers(object = allen.mouse.seurat.object.cluster, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
+head(x = allen.mouse.all.markers)
+write.csv(x = allen.mouse.all.markers, file = "output/allen.mouse.all.markers.csv")
+```
+
+#DoHeatmap
+```{r DoHeatmap, results='asis', fig.height = 10, fig.width = 20, cache=TRUE}
+allen.mouse.all.markers %>% group_by(cluster) %>% top_n(n = 2, wt = avg_logFC)
+top10 <- allen.mouse.all.markers %>% group_by(cluster) %>% top_n(n = 10, wt = avg_logFC)
+DoHeatmap(allen.mouse.seurat.object.cluster, features = top10$gene)
+
+```
+

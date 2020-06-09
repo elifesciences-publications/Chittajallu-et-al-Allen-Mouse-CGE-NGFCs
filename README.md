@@ -1,3 +1,7 @@
+This code is associated with the paper from Chittajallu et al., "Activity-dependent tuning of intrinsic excitability in mouse and human neurogliaform cells". eLife, 2020. http://doi.org/10.7554/eLife.57571
+
+
+
 # Mouse-CGE-NGFCs
 Data and code for Chittajallu et al., 2020 'Activity-dependent tuning of intrinsic excitability in mouse and human neurogliaform cells'  https://www.biorxiv.org/content/10.1101/2020.03.24.004465v2
 
